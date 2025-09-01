@@ -1,14 +1,16 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+// FIX: Import useEffect from React to resolve 'Cannot find name' error.
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Cell, Level, Puzzle, Operation } from '../types';
 import { PUZZLES } from '../constants';
 import { soundService } from '../services/sound';
+import { generatePuzzleFromAI } from '../services/puzzleGenerator';
 
 type GameState = {
   board: Cell[][];
   bankNumbers: number[];
 };
 
-const getPuzzle = (level: Level, operation: Operation): Puzzle => {
+const getStaticPuzzle = (level: Level, operation: Operation): Puzzle => {
   const puzzlesForLevel = PUZZLES[level].filter(p => p.operation === operation);
   if (puzzlesForLevel.length === 0) {
     // Fallback to addition if no puzzle for the current operation exists
@@ -19,10 +21,12 @@ const getPuzzle = (level: Level, operation: Operation): Puzzle => {
 };
 
 export const useGameLogic = (initialLevel: Level, initialOperation: Operation) => {
-  const [puzzle, setPuzzle] = useState<Puzzle>(() => getPuzzle(initialLevel, initialOperation));
+  const [puzzle, setPuzzle] = useState<Puzzle>(() => getStaticPuzzle(initialLevel, initialOperation));
   const [history, setHistory] = useState<GameState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isWon, setIsWon] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const prevSums = useRef<{ rowSums: (number|null)[]; colSums: (number|null)[] }>({ rowSums: [], colSums: [] });
 
   const { board, bankNumbers } = useMemo(() => {
@@ -37,46 +41,35 @@ export const useGameLogic = (initialLevel: Level, initialOperation: Operation) =
       }))
     );
     
-    const precalculatedBanks: Record<string, number[]> = {
-      'e1_add': [1, 3, 7, 9],
-      'e2_add': [4, 6, 8, 9],
-      'e1_sub': [-3, 0, 4, 6],
-      'e1_mul': [2, 3, 5],
-      'e1_div': [0.5, 5, 10],
-      'm1_add': [10, 11, 13, 16],
-      'm2_add': [12, 13, 15, 16, 18],
-      'm1_sub': [-20, -5, 15, 20],
-      'm1_mul': [1, 4, 5, 6],
-      'h1_add': [1, 2, 3, 5, 8, 9, 15],
-      'h1_mul': [1, 2, 4, 6, 7, 9, 10],
-      'h1_sub': [-25, -15, 10, 30],
-      'h1_div': [0.1, 0.4, 1.25, 8],
-    };
-    const initialBank = precalculatedBanks[currentPuzzle.id] || [];
-    
-    const initialState: GameState = { board: initialBoard, bankNumbers: initialBank };
+    const initialState: GameState = { board: initialBoard, bankNumbers: currentPuzzle.bankNumbers };
     setHistory([initialState]);
     setHistoryIndex(0);
     setIsWon(false);
   }, []);
 
-  const startNewGame = useCallback((level: Level, operation: Operation) => {
-    const newPuzzle = getPuzzle(level, operation);
-    setPuzzle(newPuzzle);
-    initializeBoard(newPuzzle);
-    prevSums.current = { rowSums: [], colSums: [] };
+  const startNewGame = useCallback(async (level: Level, operation: Operation) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const newPuzzle = await generatePuzzleFromAI(level, operation);
+      setPuzzle(newPuzzle);
+      initializeBoard(newPuzzle);
+    } catch (e: any) {
+      console.warn("AI puzzle generation failed, falling back to static puzzle.", e.message);
+      setError("Não foi possível gerar um novo desafio. Usando um quebra-cabeça clássico.");
+      const staticPuzzle = getStaticPuzzle(level, operation);
+      setPuzzle(staticPuzzle);
+      initializeBoard(staticPuzzle);
+    } finally {
+      setIsLoading(false);
+      prevSums.current = { rowSums: [], colSums: [] };
+    }
   }, [initializeBoard]);
   
   const resetGame = useCallback(() => {
     initializeBoard(puzzle);
     prevSums.current = { rowSums: [], colSums: [] };
   }, [puzzle, initializeBoard]);
-
-
-  useEffect(() => {
-    initializeBoard(puzzle);
-  }, [puzzle, initializeBoard]);
-
 
   const isBoardFull = useMemo(() => board.every(row => row.every(cell => cell.value !== null)), [board]);
 
@@ -193,5 +186,7 @@ export const useGameLogic = (initialLevel: Level, initialOperation: Operation) =
     redo,
     canUndo,
     canRedo,
+    isLoading,
+    error,
   };
 };

@@ -23,4 +23,5 @@ export interface Puzzle {
   grid: (number | null)[][];
   targetSum: number;
   operation: Operation;
+  bankNumbers: number[];
 }
