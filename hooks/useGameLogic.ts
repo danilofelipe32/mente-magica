@@ -3,7 +3,6 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Cell, Level, Puzzle, Operation } from '../types';
 import { PUZZLES } from '../constants';
 import { soundService } from '../services/sound';
-import { generatePuzzleFromAI } from '../services/puzzleGenerator';
 
 type GameState = {
   board: Cell[][];
@@ -25,8 +24,6 @@ export const useGameLogic = (initialLevel: Level, initialOperation: Operation) =
   const [history, setHistory] = useState<GameState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isWon, setIsWon] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const prevSums = useRef<{ rowSums: (number|null)[]; colSums: (number|null)[] }>({ rowSums: [], colSums: [] });
 
   const { board, bankNumbers } = useMemo(() => {
@@ -47,23 +44,11 @@ export const useGameLogic = (initialLevel: Level, initialOperation: Operation) =
     setIsWon(false);
   }, []);
 
-  const startNewGame = useCallback(async (level: Level, operation: Operation) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const newPuzzle = await generatePuzzleFromAI(level, operation);
-      setPuzzle(newPuzzle);
-      initializeBoard(newPuzzle);
-    } catch (e: any) {
-      console.warn("AI puzzle generation failed, falling back to static puzzle.", e.message);
-      setError("Não foi possível gerar um novo desafio. Usando um quebra-cabeça clássico.");
-      const staticPuzzle = getStaticPuzzle(level, operation);
-      setPuzzle(staticPuzzle);
-      initializeBoard(staticPuzzle);
-    } finally {
-      setIsLoading(false);
-      prevSums.current = { rowSums: [], colSums: [] };
-    }
+  const startNewGame = useCallback((level: Level, operation: Operation) => {
+    const staticPuzzle = getStaticPuzzle(level, operation);
+    setPuzzle(staticPuzzle);
+    initializeBoard(staticPuzzle);
+    prevSums.current = { rowSums: [], colSums: [] };
   }, [initializeBoard]);
   
   const resetGame = useCallback(() => {
@@ -186,7 +171,5 @@ export const useGameLogic = (initialLevel: Level, initialOperation: Operation) =
     redo,
     canUndo,
     canRedo,
-    isLoading,
-    error,
   };
 };

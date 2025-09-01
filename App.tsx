@@ -27,8 +27,6 @@ const App: React.FC = () => {
     redo,
     canUndo,
     canRedo,
-    isLoading,
-    error,
   } = useGameLogic(level, operation);
 
   const handleLevelChange = useCallback((newLevel: Level) => {
@@ -71,8 +69,6 @@ const App: React.FC = () => {
             canRedo={canRedo}
           />
           
-          {error && <div className="text-center mt-4 p-2 bg-amber-600/50 text-amber-200 rounded-md">{error}</div>}
-
           <div className="mt-8 flex flex-col items-center justify-center gap-8">
             <div className="flex w-full justify-center flex-col sm:flex-row gap-8 items-start">
               <GameBoard
@@ -82,7 +78,6 @@ const App: React.FC = () => {
                 rowSums={rowSums}
                 colSums={colSums}
                 operation={operation}
-                isLoading={isLoading}
               />
               <div className="w-full sm:w-auto p-6 bg-slate-900/70 rounded-lg text-center min-w-[10rem]">
                 <h3 className="text-lg font-bold text-cyan-400">Alvo</h3>
