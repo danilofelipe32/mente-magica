@@ -1,0 +1,5 @@
+{
+  "name": "Mente Mágica: Desafio Matemático",
+  "description": "Um jogo de quebra-cabeça matemático com desafios de soma, subtração, multiplicação e divisão. Arraste e solte os números coloridos para resolver a grade, fazendo com que cada linha e coluna atinja o valor alvo. Teste seu raciocínio lógico e suas habilidades de cálculo em vários níveis de dificuldade!",
+  "requestFramePermissions": []
+}
